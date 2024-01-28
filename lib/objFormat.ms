@@ -1,6 +1,7 @@
 import "importUtil"
 ensureImport "math3d"
 ensureImport "stringUtil"
+ensureImport "renderers"
 
 splitToNums = function(s, delta=0)
 	r = s.split(" ")
@@ -29,8 +30,8 @@ read = function(path)
 		end if
 	end for	
 
-	obj = math3d.Obj3D.make(points)
-	r = new math3d.LineRenderer
+	obj = Obj3D.make(points)
+	r = new renderers.LineRenderer
 	r.indexes = lines
 	obj.renderers.push r
 	return obj

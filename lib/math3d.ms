@@ -1,5 +1,3 @@
-print "Running math3d"
-
 import "importUtil"
 ensureImport "matrixUtil"
 ensureImport "mathUtil"
@@ -253,7 +251,7 @@ drawLine = function(pt1, pt2)
 end function
 
 // Transform: represents a position, rotation, and (uniform) scale.
-Transform = {}
+globals.Transform = {}
 Transform.position = point(0,0,0)
 Transform.rotation = offset(0,0,0)	// (Euler angles)
 Transform.scale = 1
@@ -280,133 +278,6 @@ Transform.matrix = function
 	return self._matrix
 end function
 
-// Obj3D: represents a 3D object.  It has a transform, determining its
-// position, rotation, and scale in the world; and a set of points in
-// local coordinates, which it can convert to world and screen coordinates.
-// It also has a set of renderers (which often reference those points)
-// for actually drawing stuff to the screen.
-Obj3D = {}
-Obj3D.transform = null			// a Transform object
-Obj3D.localPoints = null		// a Matrix with one 4-element row for each point
-Obj3D.worldPoints = null		// points auto-converted into world coordinates
-Obj3D.screenPoints = null		// ...and then screen coordinates
-Obj3D.renderers = null			// a List of Renderer objects
-
-Obj3D._lastTfmChg = null		// (private, please ignore)
-Obj3D._lastCamChg = null		// (same)
-
-Obj3D.make = function(points=null)
-	noob = new Obj3D
-	noob.transform = new Transform
-	if points isa list then points = Matrix.fromList(points)
-	if points isa Matrix and points.columns == 3 then
-		// convert to homogenous coordinates by appending "1" for w
-		for row in points.elem; row.push 1; end for
-		points.columns = 4
-		points.rowRange = range(0, 3)
-	end if
-	noob.localPoints = points
-	noob.renderers = []
-	return noob
-end function
-
-Obj3D.render = function
-	// Update our world and screen points, as needed
-	if self.localPoints then
-		t = self.transform.matrix
-		if self.worldPoints == null or self._lastTfmChg != self.transform.changeCount then
-//			print "Recomputing worldPoints"
-			self.worldPoints = self.localPoints.times(t)
-			self._lastTfmChg = null
-		end if
-		if self._lastTfmChg != self.transform.changeCount then // ToDo: check for camera changes too!
-//			print "Recomputing screenPoints"
-			projected = self.worldPoints.times(perspectiveMatrix)
-			projected.divideByW
-			self.screenPoints = projected.times(clipToScreen)
-		end if
-		self._lastTfmChg = self.transform.changeCount
-		// ToDo: update self._lastCamChg too
-	end if
-	for rend in self.renderers
-		rend.render self
-	end for
-end function
-
-// Renderer: base class of anything that can render part of an Obj3D
-// (or something related to an Obj3D, like a bounding box or axes).
-Renderer = {}
-Renderer.render = function(obj3D); end function		// Override me!
-
-// AxesRenderer: ignores points, and just draws local x/y/z axes
-// (in red, green, and blue respectively).
-AxesRenderer = new Renderer
-AxesRenderer.scale = 1
-AxesRenderer.render = function(obj3D)
-	// Because we're not requiring the object to have the points we need,
-	// we have no choice but to compute these every time:
-	s = self.scale
-	globals.points = Matrix.fromList([
-		[0,0,0,1],
-		[s,0,0,1],
-		[0,s,0,1],
-		[0,0,s,1] ])
-	globals.worldPts = points.times(obj3D.transform.matrix)
-	globals.projected = worldPts.times(perspectiveMatrix)
-	if projected.elem[0][2] < -1 then return	// (origin is behind near clip plane)
-	drawX = projected.elem[1][2] > -1
-	drawY = projected.elem[2][2] > -1
-	drawZ = projected.elem[3][2] > -1
-	projected.divideByW
-	globals.screenPts = projected.times(clipToScreen)
-	if drawX then
-		gfx.color = "#FF0000"
-		drawLine screenPts.elem[0], screenPts.elem[1]
-	end if
-	if drawY then
-		gfx.color = "#00FF00"
-		drawLine screenPts.elem[0], screenPts.elem[2]
-	end if
-	if drawZ then
-		gfx.color = "#4444FF"
-		drawLine screenPts.elem[0], screenPts.elem[3]
-	end if
-end function
-
-// LineRenderer: draws a line between points on the object.
-// The indexes property is a list of lists; each inner list is the
-// indexes of points that should be connect.  For example:
-//	[[0,1,2], [3,4]] draws lines from 0 to 1, from 1 to 2, and from 3 to 4.
-// All lines drawn by one LineRenderer have the same color and width,
-// but you can attach multiple LineRenderers to draw in multiple styles.
-LineRenderer = new Renderer
-LineRenderer.indexes = []
-LineRenderer.color = color.white	// line color
-LineRenderer.width = 1				// line width (thickness)
-LineRenderer.render = function(obj3D)
-	if not self.indexes then return
-	c = self.color; w = self.width
-	if self.indexes[0] isa list then
-		for set in self.indexes
-			prevPt = null
-			for idx in set
-				pt = obj3D.screenPoints.elem[idx]
-				if prevPt then gfx.line prevPt[0], prevPt[1], pt[0], pt[1], c, w
-				prevPt = pt
-			end for
-		end for
-	else
-		// we also allow indexes to be a simple list (single set).
-		prevPt = null
-		for idx in indexes
-			pt = obj3D.screenPoints.elem[idx]
-			if prevPt then gfx.line prevPt[0], prevPt[1], pt[0], pt[1], c, w
-			prevPt = pt
-		end for
-	end if
-end function
-
-
 if locals == globals then
 	clear; gfx.color = color.white
 	
@@ -427,32 +298,6 @@ if locals == globals then
 		drawLine screenCube.elem[i], screenCube.elem[i+4]
 	end for
 	
-	// But here's the more typical approach: make an Obj3D, then configure
-	// it with some local points and one or more Renderers; then call render
-	// on it to actually draw.
-	obj = Obj3D.make
-	obj.transform = t
-	obj.renderers.push new AxesRenderer
-	obj.localPoints = cubePoints
-	lr = new LineRenderer
-	lr.indexes = [
-		[0,1,2,3,0],
-		[4,5,6,7,4],
-		[0,4], [1,5], [2,6], [3,7] ]
-	lr.width = 3; lr.color = color.yellow
-	obj.renderers.push lr
-	obj.render
-	
-	
-	// And, reading from a file.
-	math3d = locals	// (avoids re-importing this code)
-	import "objFormat"
-	tank = objFormat.read("battlezonemodels/Tank.obj")
-	tank.transform.position = point(-3, 0, -7)
-	tank.transform.scale = 1/50
-	tank.transform.rotation = offset(0, -30, 0)
-//	tank.renderers.push new AxesRenderer
-//	tank.renderers[-1].scale = 50
-	tank.render
-	
+	// But more typically, you'd probably use Obj3D, which handles most of
+	// these details for you.
 end if
