@@ -2,9 +2,9 @@
 
 - move our updated matrixUtil.ms into the official sys disk
 
-- split Obj3D out into its own module
+- ~~split Obj3D out into its own module~~
 
-- split rendering stuff into its own module, too
+- ~~split rendering stuff into its own module, too~~
 
 - figure out why we need to flip Y, contrary to sense
 
