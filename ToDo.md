@@ -1,4 +1,4 @@
-- add Matrix.concat(m2, axis=0) function for concatenating matrices
+- ~~add Matrix.appendRows and .appendColumns for concatenating matrices~~
 
 - move our updated matrixUtil.ms into the official sys disk
 

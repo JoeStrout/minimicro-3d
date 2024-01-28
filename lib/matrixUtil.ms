@@ -135,6 +135,32 @@ Matrix.clone = function
 	return m
 end function
 
+Matrix.appendColumns = function(m2)
+	if m2 isa Matrix then m2 = m2.elem
+	if m2.len != self.rows then
+		print "Matrix.appendColumns error: incompatible row sizes " + 
+		  self.rows + " and " + [m2.len]
+		exit
+	end if
+	for r in self.rowRange
+		self.elem[r] += m2[r]
+	end for
+	self.columns = self.elem[0].len
+	delete self["colRange"]
+end function
+
+Matrix.appendRows = function(m2)
+	if m2 isa Matrix then m2 = m2.elem
+	if m2[0].len != self.columns then
+		print "Matrix.appendRows error: incompatible column sizes " + 
+		  self.columns + " and " + [m2[0].len]
+		exit
+	end if
+	self.elem += m2
+	self.rows = self.elem.len
+	delete self["rowRange"]
+end function
+	
 // m.add: add a number to all elements of a matrix (in place),
 // OR do element-wise addition with another matrix (or 2d list) of the same size.
 Matrix.add = function(addend)
@@ -356,6 +382,14 @@ runUnitTests = function
 	m2 = Matrix.fromList([[7,8], [9,10], [11,12]])
 	product = m.times(m2)
 	assertEqual product, [[58,64], [139,154]]
+	
+	m1 = Matrix.fromList([[1,2], [3,4]])
+	m2 = Matrix.fromList([[5,6], [7,8]])
+	m1.appendRows m2
+	assertEqual m1, [[1,2], [3,4], [5,6], [7,8]]
+	m1 = Matrix.fromList([[1,2], [3,4]])
+	m1.appendColumns m2
+	assertEqual m1, [[1,2,5,6], [3,4,7,8]]
 	
 	if errorCount == 0 then
 		print "All tests passed.  Matrices rock!"
