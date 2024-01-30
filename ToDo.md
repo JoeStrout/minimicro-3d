@@ -6,7 +6,7 @@
 
 - ~~split rendering stuff into its own module, too~~
 
-- figure out why we need to flip Y, contrary to sense
+- ~~figure out why we need to flip Y, contrary to sense~~
 
 - add camera (with its own transform, or similar properties)
 

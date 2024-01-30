@@ -10,7 +10,7 @@ offset = @math3d.offset
 
 clear
 
-tank = objFormat.read("models/Tank.obj")
+tank = objFormat.read("/usr/models/Tank.obj")
 tank.transform.position = point(0, 0, -7)
 tank.transform.scale = 1/50
 
@@ -21,5 +21,6 @@ while not key.available
 	tank.render
 	ang = (ang + 2) % 360
 	flc		// (flip and clear)
+	gfx.scale = 1; gfx.scrollX = 0; gfx.scrollY = 0
 end while
 key.clear

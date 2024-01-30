@@ -15,6 +15,8 @@ ensureImport "mathUtil"
 //	3. In the same way, when composing two transformations, T1, and T2,
 //		if you want T1 to be done first, it must be on the right: T2*T1.
 
+radPerDeg = pi/180
+
 
 // The frustum matrix implements a perspective projection.  It maps a
 // frustum (truncated pyramid) shaped volume of space in camera-relative
@@ -41,10 +43,20 @@ frustumMatrix = function(left, right, bottom, top, nearVal=0.1, farVal=1000)
 end function
 
 // This is equivalent to the OpenGL call, gluPerspective.
+//	fovY: vertical field-of-view, in degrees
+//	aspect: ratio of display width to height
+//	zNear: distance from camera to near clipping plane
+//	zFar: distance from camera to far clipping plane
+// Returns a matrix which, when multiplied by a point in world coordinates,
+// gives you a point in clip space.  If the point is within the camera view,
+// then its coordinates will be in the range [-1,1] in X, Y, and Z.
+// Moreover, the w coordinate of the returned point will be related to its
+// distance from the camera, i.e., the "perspective divide" factor.
+//
 // A pretty good reference for this stuff is:
 // https://unspecified.wordpress.com/2012/06/21/calculating-the-gluperspective-matrix-and-other-opengl-matrix-maths/
-perspectiveMatrix = function(fovY=30, aspect=1.5, zNear=0.1, zFar=1000)
-	b = 1 / tan(fovY/2)			// (called "f" in some references)
+perspectiveMatrix = function(fovY=60, aspect=1.5, zNear=0.1, zFar=1000)
+	b = 1 / tan(fovY*radPerDeg/2)			// (called "f" in some references)
 	a = b / aspect
 	zdiff = zNear - zFar
 	c = (zFar + zNear) / zdiff
@@ -81,8 +93,6 @@ scaleAndTranslate = function(xScale, yScale, zScale, dx=0, dy=0, dz=0)
 		[0, 0, zScale, 0],
 		[dx, dy, dz, 1] ])
 end function
-
-radPerDeg = pi/180
 
 xRotationMatrix = function(degrees)
 	radians = degrees * radPerDeg
@@ -156,7 +166,7 @@ zero = point(0, 0, 0)
 
 // Standard clip-to-screen transformation matrix (for the Mini Micro screen).
 // Not sure why the Y inversion is necessary.  ToDo: study this more!
-clipToScreen = scaleAndTranslate(480, -320, 1, 480, 320, 0)
+clipToScreen = scaleAndTranslate(480, 320, 1, 480, 320, 0)
 
 // Get the 8 points of an axis-aligned cube.
 // Points are listed front (+Z) first, back (-Z) last, and 
@@ -188,60 +198,6 @@ Matrix.divideByW = function
 	end for
 end function
 
-Matrix.round = function(decimalPlaces=0)
-	for row in self.elem
-		for i in row.indexes
-			row[i] = round(row[i], decimalPlaces)
-		end for
-	end for
-end function
-
-Matrix.size = function
-	return [self.rows, self.columns]
-end function
-
-Matrix.times = function(m2)
-	if m2 isa Matrix then m2 = m2.elem
-	if m2 isa list then
-		// matrix multiplication
-		if m2.len != self.columns then
-			print "Matrix.times error: incompatible sizes " + 
-			  self.size + " and " + [m2.len, len(m2[0])]
-			exit
-		end if
-		result = Matrix.ofSize(self.rows, m2[0].len)
-		for r in result.rowRange
-			resultRow = result.elem[r]
-			for c in result.colRange
-				sum = 0
-				for i in self.colRange
-					sum = sum + self.elem[r][i] * m2[i][c]
-				end for
-				resultRow[c] = sum
-			end for
-		end for
-	else
-		// simple multiplication by a scalar
-		result = self.clone
-		result.elemMultiplyBy m2
-	end if
-	return result
-end function
-
-Matrix.print = function(fieldWidth=10, precision=null, columnSep="", rowSep=null)
-	if rowSep == null then rowSep = text.delimiter
-	for row in self.elem
-		line = []
-		for elem in row
-			s = mathUtil.numToStr(elem, precision)
-			if s.len >= fieldWidth and s.indexOf(".") != null then s = s[:fieldWidth-1]
-			if s.len < fieldWidth then s = " "*(fieldWidth-s.len) + s
-			line.push s
-		end for
-		print line.join(columnSep), rowSep
-	end for
-end function
-
 drawLine = function(pt1, pt2)
 	if pt1 isa Matrix then
 		gfx.line pt1.elem[0], pt1.elem[1], pt2.elem[0], pt2.elem[1]
@@ -259,8 +215,18 @@ Transform.scale = 1
 Transform._matrix = null	// private, please ignore
 Transform.changeCount = 0	// incremented whenever matrix is rebuilt
 
+Transform.rotate = function(dPitch=0, dYaw=0, dRoll=0)
+	rot = self.rotation.elem[0]
+	rot[0] = (rot[0] + dPitch) % 360
+	rot[1] = (rot[1] + dYaw) % 360
+	rot[2] = (rot[2] + dRoll) % 360
+	self._matrix = null
+end function
+
 // Whenever you change position, rotation, or scale of a Transform,
-// be sure to call noteChange before the next update.
+// be sure to call noteChange before the next update.  (Unless your
+// changes are through one of the methods like .rotate, which does
+// this for you automatically.)
 Transform.noteChange = function
 	self._matrix = null
 end function
@@ -286,18 +252,23 @@ if locals == globals then
 	// coordinates (screenCube), and then manually drawing lines.
 	cube = cubePoints
 	t = new Transform
-	t.position = point(1, 0.3, -2)
-	t.noteChange	// (not strictly necessary right after creation)
-	tCube = cube.times(t.matrix)
-	projCube = tCube.times(perspectiveMatrix)
-	projCube.divideByW
-	screenCube = projCube.times(clipToScreen)
-	for i in range(0, 3)
-		drawLine screenCube.elem[i], screenCube.elem[(i+1)%4]
-		drawLine screenCube.elem[i+4], screenCube.elem[(i+1)%4+4]
-		drawLine screenCube.elem[i], screenCube.elem[i+4]
-	end for
-	
+	t.position = point(1, 0.3, -3)
+	while not key.available
+		t.rotate(2, 5, -1)
+		tCube = cube.times(t.matrix)
+		projCube = tCube.times(perspectiveMatrix)
+		projCube.divideByW
+		screenCube = projCube.times(clipToScreen)
+		yield
+		clear
+		for i in range(0, 3)
+			drawLine screenCube.elem[i], screenCube.elem[(i+1)%4]
+			drawLine screenCube.elem[i+4], screenCube.elem[(i+1)%4+4]
+			drawLine screenCube.elem[i], screenCube.elem[i+4]
+		end for
+		yield
+	end while
+	key.clear
 	// But more typically, you'd probably use Obj3D, which handles most of
 	// these details for you.
 end if
