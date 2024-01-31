@@ -1,7 +1,7 @@
 // Simple demo that loads an OBJ model, and makes it spin steadily
 // around its Y axis until the user presses any key.
 
-import "obj3d"
+import "Obj3d"
 import "objFormat"
 import "tc"
 

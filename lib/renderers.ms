@@ -2,6 +2,21 @@ import "importUtil"
 ensureImport "math3d"
 ensureImport "obj3d"
 
+// Camera class
+Camera = {}
+Camera.near = 0.1
+Camera.far = 1000
+Camera.transform = null
+Camera.make = function(x=0, y=0, z=0, yRotation=0)
+	cam = new Camera
+	cam.transform = Transform.make(x, y, z)
+	cam.rotation = math3d.offset(0, y, 0)
+	return cam
+end function
+
+// Camera instance used by all renderers
+camera = Camera.make
+
 drawLine = function(pt1, pt2)
 	if pt1 isa Matrix then
 		gfx.line pt1.elem[0], pt1.elem[1], pt2.elem[0], pt2.elem[1]
@@ -10,8 +25,8 @@ drawLine = function(pt1, pt2)
 	end if	
 end function
 
-// Renderer: base class of anything that can render part of an Obj3D
-// (or something related to an Obj3D, like a bounding box or axes).
+// Renderer: base class of anything that can render part of an Obj3d
+// (or something related to an Obj3d, like a bounding box or axes).
 Renderer = {}
 Renderer.render = function(obj3D); end function		// Override me!
 
@@ -23,13 +38,14 @@ AxesRenderer.render = function(obj3D)
 	// Because we're not requiring the object to have the points we need,
 	// we have no choice but to compute these every time:
 	s = self.scale
-	globals.points = Matrix.fromList([
+	points = Matrix.fromList([
 		[0,0,0,1],
 		[s,0,0,1],
 		[0,s,0,1],
 		[0,0,s,1] ])
-	globals.worldPts = points.times(obj3D.transform.matrix)
-	globals.projected = worldPts.times(math3d.perspectiveMatrix)
+	worldPts = points.times(obj3D.transform.matrix)
+	camRelative = worldPts.times(camera.transform.invMatrix)
+	projected = camRelative.times(math3d.perspectiveMatrix)
 	if projected.elem[0][2] < -1 then return	// (origin is behind near clip plane)
 	drawX = projected.elem[1][2] > -1
 	drawY = projected.elem[2][2] > -1
@@ -83,3 +99,13 @@ LineRenderer.render = function(obj3D)
 	end if
 end function
 
+if locals == globals then
+	obj = Obj3d.make
+	obj.transform.position = math3d.point(0, 0, -10)
+	obj.renderers.push new AxesRenderer
+	
+	camera.transform.setPosition 4, 2, 0
+	
+	clear
+	obj.render
+end if

@@ -208,20 +208,44 @@ end function
 
 // Transform: represents a position, rotation, and (uniform) scale.
 globals.Transform = {}
-Transform.position = point(0,0,0)
-Transform.rotation = offset(0,0,0)	// (Euler angles)
 Transform.scale = 1
-
+Transform.position = null // point(0,0,0)
+Transform.rotation = null  // offset(0,0,0)	// (Euler angles)
 Transform._matrix = null	// private, please ignore
+Transform._invMatrix = null	// (same)
 Transform.changeCount = 0	// incremented whenever matrix is rebuilt
+
+Transform.make = function(x, y, z)
+	result = new Transform
+	result.position = point(x, y, z)
+	result.rotation = offset(0, 0, 0)
+	return result
+end function
 
 Transform.rotate = function(dPitch=0, dYaw=0, dRoll=0)
 	rot = self.rotation.elem[0]
 	rot[0] = (rot[0] + dPitch) % 360
 	rot[1] = (rot[1] + dYaw) % 360
 	rot[2] = (rot[2] + dRoll) % 360
-	self._matrix = null
+	self._matrix = null; self._invMatrix = null
 end function
+
+Transform.setRotation = function(pitch=0, yaw=0, roll=0)
+	self.rotation.elem[0] = [pitch, yaw, roll, 0]
+	self._matrix = null; self._invMatrix = null
+end function
+
+Transform.move = function(dx=0, dy=0, dz=0)
+	pos = self.position.elem[0]
+	pos[0] += dx; pos[1] += dy; pos[2] += dz
+	self._matrix = null; self._invMatrix = null
+end function
+
+Transform.setPosition = function(x=0, y=0, z=0)
+	self.position.elem[0] = [x, y, z, 1]
+	self._matrix = null; self._invMatrix = null
+end function
+
 
 // Whenever you change position, rotation, or scale of a Transform,
 // be sure to call noteChange before the next update.  (Unless your
@@ -229,6 +253,7 @@ end function
 // this for you automatically.)
 Transform.noteChange = function
 	self._matrix = null
+	self._invMatrix = null
 end function
 
 Transform.matrix = function
@@ -243,6 +268,20 @@ Transform.matrix = function
 	end if
 	return self._matrix
 end function
+
+Transform.invMatrix = function
+	if not self._invMatrix then
+		pos = self.position.elem[0]
+		rot = self.rotation.elem[0]
+		invScale = 1 / self.scale
+		self._invMatrix = translationMatrix(-pos[0], -pos[1], -pos[2]).
+		   times(scaleMatrix(invScale, invScale, invScale)).
+		   times(yawPitchRollMatrix(-rot[1], -rot[0], -rot[2]))
+		self.changeCount = (self.changeCount + 1) % 1000000
+	end if
+	return self._invMatrix
+end function
+		
 
 if locals == globals then
 	clear; gfx.color = color.white
@@ -269,6 +308,6 @@ if locals == globals then
 		yield
 	end while
 	key.clear
-	// But more typically, you'd probably use Obj3D, which handles most of
+	// But more typically, you'd probably use Obj3d, which handles most of
 	// these details for you.
 end if

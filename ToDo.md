@@ -2,7 +2,7 @@
 
 - move our updated matrixUtil.ms into the official sys disk
 
-- ~~split Obj3D out into its own module~~
+- ~~split Obj3d out into its own module~~
 
 - ~~split rendering stuff into its own module, too~~
 

@@ -30,7 +30,7 @@ read = function(path)
 		end if
 	end for	
 
-	obj = Obj3D.make(points)
+	obj = Obj3d.make(points)
 	r = new renderers.LineRenderer
 	r.indexes = lines
 	obj.renderers.push r
