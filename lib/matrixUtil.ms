@@ -338,7 +338,7 @@ runUnitTests = function
 	assertEqual m.rows, 1
 	assertEqual m.columns, 3
 	assertEqual m, [[1,2,3]]
-		
+	
 	m = Matrix.fromList([[1,2,3], [4,5,6]])
 	assertEqual m.row(0), [[1,2,3]]
 	assertEqual m.row(1), [[4,5,6]]
@@ -354,7 +354,7 @@ runUnitTests = function
 	m2.elem[1][2] = 60
 	assertEqual m, [[1,2,3], [4,5,6]]
 	assertEqual m2, [[1,2,3], [4,5,60]]	
-
+	
 	mT = m.transpose
 	assertEqual m, [[1,2,3], [4,5,6]]
 	assertEqual mT, [[1,4], [2,5], [3,6]]
@@ -363,11 +363,11 @@ runUnitTests = function
 	m2 = m.plus(10)
 	assertEqual m, [[1,2,3], [4,5,6]]
 	assertEqual m2, [[11,12,13], [14,15,16]]	
-
+	
 	m2 = m.plus([[10,0,0], [0,0,100]])
 	assertEqual m, [[1,2,3], [4,5,6]]
 	assertEqual m2, [[11,2,3], [4,5,106]]
-
+	
 	m2 = m.times(10)
 	assertEqual m, [[1,2,3], [4,5,6]]
 	assertEqual m2, [[10,20,30], [40,50,60]]

@@ -22,7 +22,7 @@ for i in range(0, 150)
 end for
 points = Matrix.fromList(points)
 
-t = new Transform
+t = Transform.make
 t.position = math3d.point(0, 0, -6)
 
 ang = 0

@@ -290,7 +290,7 @@ if locals == globals then
 	// local coordinates (cube) and building up all the way to screen
 	// coordinates (screenCube), and then manually drawing lines.
 	cube = cubePoints
-	t = new Transform
+	t = Transform.make
 	t.position = point(1, 0.3, -3)
 	while not key.available
 		t.rotate(2, 5, -1)

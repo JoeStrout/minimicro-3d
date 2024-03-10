@@ -8,13 +8,15 @@
 
 - ~~figure out why we need to flip Y, contrary to sense~~
 
-- add camera (with its own transform, or similar properties)
+- ~~add camera (with its own transform, or similar properties)~~
 
-- add deferred gfx and sprite rendering, so we can depth-sort
+- ~~add deferred gfx, so we can depth-sort~~
+  - fix depth-sorting in edge cases
 
 - add polygon renderer
-
-- add sprite renderer
+  - add basic lighting (based on angle between face and light(s))
+  
+- add sprite renderer (with basic lighting)
 
 - make a couple of demos where you can directly manipulate camera or scene object
 

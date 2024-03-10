@@ -10,7 +10,6 @@ Camera.transform = null
 Camera.make = function(x=0, y=0, z=0, yRotation=0)
 	cam = new Camera
 	cam.transform = Transform.make(x, y, z)
-	cam.rotation = math3d.offset(0, y, 0)
 	return cam
 end function
 
@@ -73,7 +72,7 @@ end function
 // All lines drawn by one LineRenderer have the same color and width,
 // but you can attach multiple LineRenderers to draw in multiple styles.
 LineRenderer = new Renderer
-LineRenderer.indexes = []
+LineRenderer.indexes = null		// (list of lists; see above)  ToDo: RENAME!
 LineRenderer.color = color.white	// line color
 LineRenderer.width = 1				// line width (thickness)
 LineRenderer.render = function(obj3D)
@@ -99,13 +98,81 @@ LineRenderer.render = function(obj3D)
 	end if
 end function
 
+// DeferredPolyRenderer: adds polygons to a shared list.  Then, after you've
+// rendered all your objects that are going to use this renderer, you call
+// DeferredPolyRenderer.sortAndDraw which sorts and draws the polygons all
+// at once.
+//
+// Palygons on each object are defined much like LineRenderer: a list of lists,
+// where each inner list specifies indexes of points in a polygon.
+DeferredPolyRenderer = new Renderer
+DeferredPolyRenderer.polys = null		// (list of lists; see above)
+DeferredPolyRenderer.color = color.gray	// fill color (null to not draw)
+DeferredPolyRenderer.edgeColor = color.white	// edge color
+DeferredPolyRenderer.edgeWidth = 0				// edge width (0 to not draw)
+
+// This is our shared list of polygons waiting to be sorted and drawn.
+// Each entry is: [depth, [screen points], renderer]
+DeferredPolyRenderer.drawList = []
+
+// render: shove our polygons onto the shared drawList.
+DeferredPolyRenderer.render = function(obj3D)
+	if not self.polys then return
+	for srcPoly in self.polys
+		sumDepth = 0
+		screenPts = []
+		for idx in srcPoly
+			p = obj3D.screenPoints.elem[idx]
+			screenPts.push p
+			sumDepth += p[2]
+		end for
+		DeferredPolyRenderer.drawList.push [sumDepth/srcPoly.len, screenPts, self]
+	end for
+end function
+
+// sortAndDraw: sort all our polygons and draw them, in depth order, to gfx.
+DeferredPolyRenderer.sortAndDraw = function
+	DeferredPolyRenderer.drawList.sort 0, false
+	for entry in DeferredPolyRenderer.drawList
+		rend = entry[2]
+		if rend.color then gfx.fillPoly entry[1], rend.color
+		if rend.edgeColor and rend.edgeWidth > 0 then
+			gfx.drawPoly entry[1], rend.edgeColor, rend.edgeWidth
+		end if
+	end for	
+	DeferredPolyRenderer.drawList = []
+end function
+
+
 if locals == globals then
+	renderers = {} + locals
 	obj = Obj3d.make
 	obj.transform.position = math3d.point(0, 0, -10)
 	obj.renderers.push new AxesRenderer
 	
-	camera.transform.setPosition 4, 2, 0
+	ensureImport "objFormat"
+	cube = objFormat.read("/usr/models/cube.obj")
+	cube.transform.position = math3d.point(5, 0.5, -5)
+	cube.renderers[-1].edgeWidth = 1
 	
-	clear
-	obj.render
+	camera.transform.setPosition 4, 2, 0
+
+	while true
+		clear
+		obj.render
+		cube.render
+		DeferredPolyRenderer.sortAndDraw
+		k = key.get.code
+		if k == 17 then // left
+			camera.transform.rotate 0, 10, 0
+		else if k == 18 then // right
+			camera.transform.rotate 0, -10, 0
+		else if k == ",".code then
+			cube.transform.rotate 0, 10, 0
+		else if k == ".".code then
+			cube.transform.rotate 0, -10, 0
+		else if k == 27 then  // escape
+			break
+		end if
+	end while
 end if
